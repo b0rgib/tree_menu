@@ -1,7 +1,7 @@
 <ul>
     {% for item in items %}
         <li>
-            <a href="?{{ other_querystring }}&{{ menu }}={{ item.id }}">{{ item.name }}</a>
+            <a href="?{{ other_querystring }}&{{ menu }}={{ item.path }}">{{ item.name }}</a>
         </li>
         
         {% if item.child_items %}
