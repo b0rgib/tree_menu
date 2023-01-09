@@ -1,5 +1,6 @@
 from django import template
 from draw_menu.models import Item
+from django.db.models import Q
 
 
 register = template.Library()
@@ -7,14 +8,13 @@ register = template.Library()
 
 @register.inclusion_tag('draw_menu/menu.html', takes_context=True)
 def draw_menu(context, menu):
-    items = Item.objects.filter(menu__name=menu)
-    items_values = list(items.values())
-    primary_item = [item for item in list(filter(lambda item: item['parent_id'] == None, items_values))]
-    for item in primary_item:
-        item['child_items'] = []
-        item['path'] = str(item['id'])
     try:
         path_to_selected = list(context['request'].GET[menu].split('-'))
+        items_values = Item.objects.filter(Q(menu__name=menu) & (Q(id__in=path_to_selected) | Q(parent=None) | Q(parent__id=path_to_selected[-1]))).values()
+        primary_item = [item for item in list(filter(lambda item: item['parent_id'] == None, items_values))]
+        for item in primary_item:
+            item['child_items'] = []
+            item['path'] = str(item['id'])
         path = ''
         for i in range(len(path_to_selected)):
             cur = list(filter(lambda item: item['id'] == int(path_to_selected[i]), items_values))[0]
@@ -29,9 +29,13 @@ def draw_menu(context, menu):
                     item['path'] = path + '-' + str(item['id'])
             else:
                 cur['child_items'] = [list(filter(lambda item: item['id'] == int(path_to_selected[i+1]), items_values))[0]]
+        result_dict = {'items': primary_item}
     except:
-        pass
-    result_dict = {'items': primary_item}
+        primary_item = list(Item.objects.filter(Q(menu__name=menu) & Q(parent=None)).values())
+        for item in primary_item:
+            item['child_items'] = []
+            item['path'] = str(item['id'])
+        result_dict = {'items': primary_item}
     result_dict['menu'] = menu
     result_dict['other_querystring'] = get_querystring(context, menu)
     return result_dict
